@@ -1,0 +1,22 @@
+network/wake_on_lan/accendi_pc.sh    # Accende il PC principale via Wake-on-LAN
+network/wake_on_lan/accendi_pc_pisso.sh    # Accende il PC di pisso via Wake-on-LAN
+network/wake_on_lan/spegni_pc.sh    # Spegne il PC principale via SSH
+network/wake_on_lan/spegni_pc_fisso.sh    # Spegne il PC fisso remoto via SSH
+network/scp/scp_send.sh    # Invia file via SCP a un server remoto
+git/init/init_git_repo.sh    # Crea repo GitHub, aggiunge SSH e inizializza git locale
+git/push/slither_push_repo.sh    # Push rapido con commit interattivo
+system/report/system_report.sh    # Report completo del sistema
+system/report/check_fs.sh    # Controlla lo stato del filesystem
+system/report/check_security_problems.sh    # Verifica vulnerabilità di sicurezza note
+system/report/high_consumption_processes.sh    # Processi ad alto consumo risorse
+system/tools/install_dev_tools.sh    # Installa tool di sviluppo comuni
+system/service/shutdown_service.sh    # Arresta un servizio in modo sicuro
+setup/arch/arch_install.sh    # Installazione automatizzata Arch Linux
+setup/hyprland/setup_hyprland.sh    # Configura Hyprland con impostazioni ottimali
+setup/wezterm/setup_wezterm.sh    # Installa e configura WezTerm
+setup/zshrc/setup_zshrc.sh    # Configura .zshrc con plugin e theme
+setup/lazyvim/lazyvim_installer.sh    # Installa e configura NeoVim con LazyVim
+ai/ask_ai/ask_ai.sh    # Installa Ollama con llama3.2 e avvia chat AI da terminale
+pitonzi/pitonzi/run_pitonzi.sh    # Launcher script Python con venv temporaneo
+backend/spring_boot/update_keystore.sh    # Aggiorna il keystore di Spring Boot
+fun/spongebob/spongebob_ascii.sh    # ASCII art animata di Spongebob
