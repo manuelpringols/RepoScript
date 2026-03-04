@@ -1,0 +1,8 @@
+network    # Script di rete e connettività
+git        # Gestione repository git
+system     # Utilità di sistema
+setup      # Installazione e configurazione ambiente
+ai         # Strumenti AI e automazione
+pitonzi    # Launcher script Python
+backend    # Script per applicazioni backend
+fun        # Script inutili ma divertenti
