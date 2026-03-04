@@ -95,7 +95,7 @@ select_or_create_profile() {
   echo -e "  ${CYAN}${i}${RESET}) ${YELLOW}+ Crea nuovo profilo${RESET}"
 
   echo ""
-  read -rp "$(echo -e "${YELLOW}Scelta [1]: ${RESET}")" choice
+  read -rp "$(echo -e "${YELLOW}Scelta [1]: ${RESET}")" choice < /dev/tty
   choice="${choice:-1}"
 
   if [[ "$choice" -eq "$i" ]]; then
@@ -122,18 +122,14 @@ select_or_create_profile() {
 create_profile() {
   echo -e "${CYAN}${BOLD}➕ Nuovo profilo git${RESET}\n"
 
-  read -rp "$(echo -e "${YELLOW}🏷️  Nome profilo (es: lavoro, personale): ${RESET}")" PROFILE_LABEL
+  read -rp "$(echo -e "${YELLOW}🏷️  Nome profilo (es: lavoro, personale): ${RESET}")" PROFILE_LABEL < /dev/tty
   [[ -z "$PROFILE_LABEL" ]] && PROFILE_LABEL="default"
 
   # Token
-  echo -e "${YELLOW}🔑 GitHub token: ${RESET}"
-  read -rs GITHUB_TOKEN
-  echo
+  read -rp "$(echo -e "${YELLOW}🔑 GitHub token: ${RESET}")" GITHUB_TOKEN < /dev/tty
   while [[ -z "$GITHUB_TOKEN" ]]; do
     print_warn "Token obbligatorio."
-    echo -e "${YELLOW}🔑 GitHub token: ${RESET}"
-    read -rs GITHUB_TOKEN
-    echo
+    read -rp "$(echo -e "${YELLOW}🔑 GitHub token: ${RESET}")" GITHUB_TOKEN < /dev/tty
   done
 
   # Verifica token e ricava user automaticamente
@@ -153,7 +149,7 @@ create_profile() {
   _pick_ssh_key
 
   # Salva il profilo per riusi futuri
-  read -rp "$(echo -e "${YELLOW}💾 Salvare il profilo per usi futuri? [Y/n]: ${RESET}")" save
+  read -rp "$(echo -e "${YELLOW}💾 Salvare il profilo per usi futuri? [Y/n]: ${RESET}")" save < /dev/tty
   if [[ ! "$save" =~ ^[Nn]$ ]]; then
     save_profile "$PROFILE_LABEL" "$GITHUB_USER" "$GITHUB_TOKEN" "$SSH_KEY_PATH"
   fi
@@ -165,7 +161,7 @@ _pick_ssh_key() {
 
   if [[ ${#ssh_keys[@]} -eq 0 ]]; then
     print_warn "Nessuna chiave SSH trovata in ~/.ssh/"
-    read -rp "$(echo -e "${YELLOW}Generare una chiave ed25519 ora? [Y/n]: ${RESET}")" gen
+    read -rp "$(echo -e "${YELLOW}Generare una chiave ed25519 ora? [Y/n]: ${RESET}")" gen < /dev/tty
     if [[ ! "$gen" =~ ^[Nn]$ ]]; then
       ssh-keygen -t ed25519 -C "${GITHUB_USER}@marmitta" \
         -f "$HOME/.ssh/id_ed25519" -N "" -q
@@ -182,7 +178,7 @@ _pick_ssh_key() {
     for i in "${!ssh_keys[@]}"; do
       echo -e "  ${CYAN}$((i+1))${RESET}) ${ssh_keys[$i]}"
     done
-    read -rp "$(echo -e "${YELLOW}Scegli [1]: ${RESET}")" key_idx
+    read -rp "$(echo -e "${YELLOW}Scegli [1]: ${RESET}")" key_idx < /dev/tty
     key_idx=$(( ${key_idx:-1} - 1 ))
     SSH_KEY_PATH="${ssh_keys[$key_idx]:-${ssh_keys[0]}}"
     print_info "Chiave selezionata: ${SSH_KEY_PATH}"
@@ -202,7 +198,7 @@ print_step "Configurazione repository"
 read -rp "$(echo -e "${YELLOW}📦 Nome del repository: ${RESET}")" REPO_NAME
 while [[ -z "$REPO_NAME" ]]; do
   print_warn "Il nome è obbligatorio."
-  read -rp "$(echo -e "${YELLOW}📦 Nome del repository: ${RESET}")" REPO_NAME
+  read -rp "$(echo -e "${YELLOW}📦 Nome del repository: ${RESET}")" REPO_NAME < /dev/tty
 done
 
 read -rp "$(echo -e "${YELLOW}📝 Descrizione (opzionale): ${RESET}")" REPO_DESC
