@@ -13,12 +13,9 @@ DARK_GRAY="\e[90m"
 BOLD="\e[1m"
 RESET="\033[0m"
 
-print_ok() { echo -e "${GREEN}✅ $1${RESET}"; }
+print_ok()   { echo -e "${GREEN}✅ $1${RESET}"; }
 print_warn() { echo -e "${YELLOW}⚠️  $1${RESET}"; }
-print_err() {
-  echo -e "${RED}❌ $1${RESET}"
-  exit 1
-}
+print_err()  { echo -e "${RED}❌ $1${RESET}"; exit 1; }
 print_info() { echo -e "${CYAN}ℹ️  $1${RESET}"; }
 print_step() { echo -e "\n${MAGENTA}━━━ $1 ━━━${RESET}"; }
 
@@ -60,16 +57,16 @@ load_profiles() {
 save_profile() {
   local label="$1" user="$2" token="$3" ssh_key="$4"
   mkdir -p "$(dirname "$MARMITTA_GIT_CONFIG")"
-  [[ ! -f "$MARMITTA_GIT_CONFIG" ]] &&
+  [[ ! -f "$MARMITTA_GIT_CONFIG" ]] && \
     echo "# Marmitta git profiles — label|github_user|github_token|ssh_key" \
-      >"$MARMITTA_GIT_CONFIG"
+    > "$MARMITTA_GIT_CONFIG"
 
   # Evita duplicati sulla label
   if grep -q "^${label}|" "$MARMITTA_GIT_CONFIG" 2>/dev/null; then
     # Aggiorna la riga esistente
     sed -i "s|^${label}|.*|${label}|${user}|${token}|${ssh_key}|" "$MARMITTA_GIT_CONFIG"
   else
-    echo "${label}|${user}|${token}|${ssh_key}" >>"$MARMITTA_GIT_CONFIG"
+    echo "${label}|${user}|${token}|${ssh_key}" >> "$MARMITTA_GIT_CONFIG"
   fi
   print_ok "Profilo '${label}' salvato."
 }
@@ -93,8 +90,8 @@ select_or_create_profile() {
   while IFS='|' read -r label user token ssh_key; do
     echo -e "  ${CYAN}${i}${RESET}) ${label} ${DARK_GRAY}(${user})${RESET}"
     labels+=("$label")
-    ((i++))
-  done <<<"$profiles"
+    (( i++ ))
+  done <<< "$profiles"
   echo -e "  ${CYAN}${i}${RESET}) ${YELLOW}+ Crea nuovo profilo${RESET}"
 
   echo ""
@@ -115,9 +112,9 @@ select_or_create_profile() {
   fi
 
   PROFILE_LABEL=$(echo "$chosen_line" | cut -d'|' -f1)
-  GITHUB_USER=$(echo "$chosen_line" | cut -d'|' -f2)
-  GITHUB_TOKEN=$(echo "$chosen_line" | cut -d'|' -f3)
-  SSH_KEY_PATH=$(echo "$chosen_line" | cut -d'|' -f4)
+  GITHUB_USER=$(echo "$chosen_line"   | cut -d'|' -f2)
+  GITHUB_TOKEN=$(echo "$chosen_line"  | cut -d'|' -f3)
+  SSH_KEY_PATH=$(echo "$chosen_line"  | cut -d'|' -f4)
 
   print_ok "Profilo caricato: ${PROFILE_LABEL} (${GITHUB_USER})"
 }
@@ -129,11 +126,13 @@ create_profile() {
   [[ -z "$PROFILE_LABEL" ]] && PROFILE_LABEL="default"
 
   # Token
-  read -rsp "$(echo -e "${YELLOW}🔑 GitHub token: ${RESET}")" GITHUB_TOKEN
+  echo -e "${YELLOW}🔑 GitHub token: ${RESET}"
+  read -rs GITHUB_TOKEN
   echo
   while [[ -z "$GITHUB_TOKEN" ]]; do
     print_warn "Token obbligatorio."
-    read -rsp "$(echo -e "${YELLOW}🔑 GitHub token: ${RESET}")" GITHUB_TOKEN
+    echo -e "${YELLOW}🔑 GitHub token: ${RESET}"
+    read -rs GITHUB_TOKEN
     echo
   done
 
@@ -173,8 +172,7 @@ _pick_ssh_key() {
       SSH_KEY_PATH="$HOME/.ssh/id_ed25519.pub"
       print_ok "Chiave generata: ${SSH_KEY_PATH}"
     else
-      echo -e "${RED}❌ Chiave SSH obbligatoria.${RESET}"
-      exit 1
+      echo -e "${RED}❌ Chiave SSH obbligatoria.${RESET}"; exit 1
     fi
   elif [[ ${#ssh_keys[@]} -eq 1 ]]; then
     SSH_KEY_PATH="${ssh_keys[0]}"
@@ -182,10 +180,10 @@ _pick_ssh_key() {
   else
     echo -e "\n${YELLOW}🔑 Chiavi SSH disponibili:${RESET}"
     for i in "${!ssh_keys[@]}"; do
-      echo -e "  ${CYAN}$((i + 1))${RESET}) ${ssh_keys[$i]}"
+      echo -e "  ${CYAN}$((i+1))${RESET}) ${ssh_keys[$i]}"
     done
     read -rp "$(echo -e "${YELLOW}Scegli [1]: ${RESET}")" key_idx
-    key_idx=$((${key_idx:-1} - 1))
+    key_idx=$(( ${key_idx:-1} - 1 ))
     SSH_KEY_PATH="${ssh_keys[$key_idx]:-${ssh_keys[0]}}"
     print_info "Chiave selezionata: ${SSH_KEY_PATH}"
   fi
@@ -214,8 +212,8 @@ echo -e "  ${CYAN}1${RESET}) Pubblico"
 echo -e "  ${CYAN}2${RESET}) Privato"
 read -rp "$(echo -e "${YELLOW}Scelta [1]: ${RESET}")" vis_choice
 case "${vis_choice:-1}" in
-2) REPO_PRIVATE="true" ;;
-*) REPO_PRIVATE="false" ;;
+  2) REPO_PRIVATE="true"  ;;
+  *) REPO_PRIVATE="false" ;;
 esac
 
 FULL_URL="git@github.com:${GITHUB_USER}/${REPO_NAME}.git"
@@ -228,7 +226,7 @@ echo -e "  ${DARK_GRAY}Profilo:     ${RESET}${PROFILE_LABEL}"
 echo -e "  ${DARK_GRAY}Utente:      ${RESET}${GITHUB_USER}"
 echo -e "  ${DARK_GRAY}Repository:  ${RESET}${REPO_NAME}"
 echo -e "  ${DARK_GRAY}Descrizione: ${RESET}${REPO_DESC:-(nessuna)}"
-echo -e "  ${DARK_GRAY}Visibilità:  ${RESET}$([[ "$REPO_PRIVATE" == "true" ]] && echo "🔒 Privato" || echo "🌐 Pubblico")"
+echo -e "  ${DARK_GRAY}Visibilità:  ${RESET}$( [[ "$REPO_PRIVATE" == "true" ]] && echo "🔒 Privato" || echo "🌐 Pubblico")"
 echo -e "  ${DARK_GRAY}Chiave SSH:  ${RESET}${SSH_KEY_PATH}"
 echo -e "  ${DARK_GRAY}Remote URL:  ${RESET}${FULL_URL}"
 
@@ -248,14 +246,13 @@ http_code=$(curl -s -w "%{http_code}" -o "$tmp_resp" \
   -d "{\"name\":\"${REPO_NAME}\",\"description\":\"${REPO_DESC}\",\"private\":${REPO_PRIVATE}}")
 
 case "$http_code" in
-201) print_ok "Repository creato su GitHub!" ;;
-422) print_warn "Repository già esistente, procedo." ;;
-*)
-  echo -e "${RED}❌ Errore (HTTP $http_code):${RESET}"
-  jq -r '.message // .' "$tmp_resp"
-  rm -f "$tmp_resp"
-  exit 1
-  ;;
+  201) print_ok "Repository creato su GitHub!" ;;
+  422) print_warn "Repository già esistente, procedo." ;;
+  *)
+    echo -e "${RED}❌ Errore (HTTP $http_code):${RESET}"
+    jq -r '.message // .' "$tmp_resp"
+    rm -f "$tmp_resp"; exit 1
+    ;;
 esac
 rm -f "$tmp_resp"
 
@@ -275,23 +272,21 @@ http_code=$(curl -s -w "%{http_code}" -o "$tmp_ssh" \
   -d "{\"title\":\"${KEY_TITLE}\",\"key\":\"${KEY_CONTENT}\"}")
 
 case "$http_code" in
-201) print_ok "Chiave SSH aggiunta!" ;;
-422)
-  if grep -q "key is already in use" "$tmp_ssh" 2>/dev/null; then
-    print_warn "Chiave già presente su GitHub."
-  else
-    echo -e "${RED}❌ Errore aggiunta chiave (HTTP $http_code):${RESET}"
+  201) print_ok "Chiave SSH aggiunta!" ;;
+  422)
+    if grep -q "key is already in use" "$tmp_ssh" 2>/dev/null; then
+      print_warn "Chiave già presente su GitHub."
+    else
+      echo -e "${RED}❌ Errore aggiunta chiave (HTTP $http_code):${RESET}"
+      jq -r '.message // .' "$tmp_ssh"
+      rm -f "$tmp_ssh"; exit 1
+    fi
+    ;;
+  *)
+    echo -e "${RED}❌ Errore (HTTP $http_code):${RESET}"
     jq -r '.message // .' "$tmp_ssh"
-    rm -f "$tmp_ssh"
-    exit 1
-  fi
-  ;;
-*)
-  echo -e "${RED}❌ Errore (HTTP $http_code):${RESET}"
-  jq -r '.message // .' "$tmp_ssh"
-  rm -f "$tmp_ssh"
-  exit 1
-  ;;
+    rm -f "$tmp_ssh"; exit 1
+    ;;
 esac
 rm -f "$tmp_ssh"
 
@@ -308,10 +303,7 @@ else
   mkdir "$REPO_NAME"
 fi
 
-cd "$REPO_NAME" || {
-  echo -e "${RED}❌ Impossibile entrare in ${REPO_NAME}${RESET}"
-  exit 1
-}
+cd "$REPO_NAME" || { echo -e "${RED}❌ Impossibile entrare in ${REPO_NAME}${RESET}"; exit 1; }
 
 if [[ ! -d ".git" ]]; then
   git init -q
@@ -331,7 +323,7 @@ fi
 # === STEP 4: README E PRIMO COMMIT ===
 # ─────────────────────────────────────────────────────────────
 if [[ ! -f "README.md" ]]; then
-  cat >README.md <<EOF
+  cat > README.md <<EOF
 # ${REPO_NAME}
 
 ${REPO_DESC}
