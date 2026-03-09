@@ -165,6 +165,68 @@ miei-script  | tuousername/py-scripts  | main
 
 ---
 
+### AI
+
+#### `ai/ask_ai/ask_ai.sh`
+Coltellino svizzero AI locale — interfaccia terminale per LLM gratuiti via [Ollama](https://ollama.ai). Zero cloud, zero costi, risposta in streaming.
+
+**Modalità disponibili:**
+
+| Flag | Azione |
+|------|--------|
+| *(nessun flag)* | Chat interattiva con storia della conversazione |
+| `-q "domanda"` | Risposta diretta (one-shot) e termina |
+| `--code` / `-c` | Chat in modalità assistente codice (system prompt tecnico) |
+| `--explain [FILE]` | Spiega un file o testo da pipe |
+| `--summarize [FILE]` | Riassumi un file o testo da pipe |
+| `--translate "testo" [--to LINGUA]` | Traduzione |
+| `-m MODEL` | Usa un modello specifico (sovrascrive config) |
+| `--install` | Setup guidato: installa Ollama + scarica modello ottimale |
+| `--models` | Elenca modelli installati localmente |
+| `--status` | Stato sistema: GPU, RAM, modello attivo, config |
+
+**Uso:**
+```bash
+# Prima installazione guidata
+bash ai/ask_ai/ask_ai.sh --install
+
+# Chat interattiva
+bash ai/ask_ai/ask_ai.sh
+
+# Domanda rapida
+bash ai/ask_ai/ask_ai.sh -q "Cos'è un Dockerfile?"
+
+# Pipeline — il caso d'uso più potente
+cat errore.log   | ask_ai.sh -q "cosa significa questo errore?"
+git diff HEAD    | ask_ai.sh -q "scrivi il messaggio di commit"
+cat script.py    | ask_ai.sh --explain
+cat documento.md | ask_ai.sh --summarize
+cat testo.txt    | ask_ai.sh --translate --to English
+
+# Assistente codice con modello specifico
+bash ai/ask_ai/ask_ai.sh --code -m codellama:7b
+```
+
+**Comandi nella chat interattiva:**
+```
+/clear          Resetta la conversazione
+/save           Salva la chat in ~/.config/marmitta/cache/ask_ai/
+/model mistral  Cambia modello a runtime
+/help           Lista comandi
+/exit           Esci
+```
+
+**Rilevamento hardware automatico:**
+- Detecta NVIDIA (nvidia-smi), Apple Silicon (arm64), AMD (rocm-smi)
+- Suggerisce il modello ottimale: `phi3:mini` < 8GB, `llama3.2:3b` 8-16GB, `llama3.1:8b` 16GB+, `codellama:7b` per codice
+
+**Integrazione Marmitta:**
+- `MARMITTA_AI_MODEL` in `~/.config/marmitta/config` — modello preferito
+- `MARMITTA_AI_LANG` — lingua delle risposte (default: `italiano`)
+- Chat salvate in `~/.config/marmitta/cache/ask_ai/chat_YYYYMMDD_HHMMSS.json`
+
+---
+
 ### Network
 
 #### `network/ssh_manager/ssh_manager.sh`
@@ -222,7 +284,7 @@ bash network/ssh_manager/ssh_manager.sh --ping
 | `system/report/check_security_problems.sh` | Verifica vulnerabilità note |
 | `system/report/high_consumption_processes.sh` | Processi ad alto consumo |
 | `system/service/shutdown_service.sh` | Arresto sicuro di un servizio |
-| `ai/ask_ai/ask_ai.sh` | Chat AI da terminale con Ollama + llama3.2 |
+| ~~`ai/ask_ai/ask_ai.sh`~~ | **Implementato** — vedi sezione AI |
 | `setup/arch/arch_install.sh` | Installazione automatizzata Arch Linux |
 | `setup/hyprland/setup_hyprland.sh` | Configurazione Hyprland |
 | `setup/lazyvim/lazyvim_installer.sh` | NeoVim + LazyVim setup |

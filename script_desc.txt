@@ -17,7 +17,7 @@ setup/hyprland/setup_hyprland.sh    # Configura Hyprland con impostazioni ottima
 setup/wezterm/setup_wezterm.sh    # Installa e configura WezTerm
 setup/zshrc/setup_zshrc.sh    # Configura .zshrc con plugin e theme
 setup/lazyvim/lazyvim_installer.sh    # Installa e configura NeoVim con LazyVim
-ai/ask_ai/ask_ai.sh    # Installa Ollama con llama3.2 e avvia chat AI da terminale
+ai/ask_ai/ask_ai.sh    # Coltellino svizzero AI locale — chat, one-shot, codice, riassunti, traduzione
 pitonzi/pitonzi/run_pitonzi.sh    # Launcher script Python con venv temporaneo
 backend/spring_boot/update_keystore.sh    # Aggiorna il keystore di Spring Boot
 fun/spongebob/spongebob_ascii.sh    # ASCII art animata di Spongebob
