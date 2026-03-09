@@ -165,13 +165,58 @@ miei-script  | tuousername/py-scripts  | main
 
 ---
 
+### Network
+
+#### `network/ssh_manager/ssh_manager.sh`
+Gestore completo di connessioni SSH con profili salvati in Marmitta. Sostituisce la gestione manuale di host, porte e chiavi.
+
+**Modalità disponibili:**
+
+| Flag | Azione |
+|------|--------|
+| *(nessun flag)* | Connetti a un host (selezione fzf) |
+| `-l, --list` | Elenca tutti i profili con stato online in tempo reale |
+| `-a, --add` | Aggiungi nuovo profilo interattivamente |
+| `-r, --remove` | Rimuovi profilo |
+| `-s, --send` | Invia file o cartella via SCP |
+| `-k, --copy-key` | Copia chiave SSH pubblica sul host (con fallback manuale) |
+| `-t, --tunnel` | Tunnel SSH — port forwarding locale, foreground o background |
+| `-p, --ping` | Verifica raggiungibilità di tutti i profili con latenza |
+| `-e, --edit` | Apre il file profili in `$EDITOR` |
+
+**Uso:**
+```bash
+# Connetti a un host salvato
+bash network/ssh_manager/ssh_manager.sh
+
+# Aggiungi il tuo server di casa
+bash network/ssh_manager/ssh_manager.sh --add
+
+# Esponi la porta 5432 del DB remoto in locale
+bash network/ssh_manager/ssh_manager.sh --tunnel
+# → porta locale: 5432  |  endpoint remoto: localhost:5432
+
+# Invia un dump del DB
+bash network/ssh_manager/ssh_manager.sh --send
+
+# Controlla quali host sono online
+bash network/ssh_manager/ssh_manager.sh --ping
+```
+
+**Integrazione Marmitta:**
+- Profili salvati in `~/.config/marmitta/ssh_profiles` (permessi 600)
+- Legge `~/.config/marmitta/config` per variabili custom
+- Formato profili: `label|user|host|port|ssh_key_path|descrizione`
+
+---
+
 ## Script in sviluppo (placeholder)
 
 | Script | Descrizione |
 |--------|-------------|
 | `network/wake_on_lan/accendi_pc.sh` | Accende il PC principale via Wake-on-LAN |
 | `network/wake_on_lan/spegni_pc.sh` | Spegne il PC principale via SSH |
-| `network/scp/scp_send.sh` | Invia file a un server remoto via SCP |
+| `network/scp/scp_send.sh` | Invia file a un server remoto via SCP *(coperto da `ssh_manager --send`)* |
 | `system/report/system_report.sh` | Report completo del sistema |
 | `system/report/check_fs.sh` | Controllo stato filesystem |
 | `system/report/check_security_problems.sh` | Verifica vulnerabilità note |

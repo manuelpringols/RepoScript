@@ -1,3 +1,4 @@
+network/ssh_manager/ssh_manager.sh    # Gestore connessioni SSH con profili Marmitta — connect, send, tunnel, ping
 network/wake_on_lan/accendi_pc.sh    # Accende il PC principale via Wake-on-LAN
 network/wake_on_lan/accendi_pc_pisso.sh    # Accende il PC di pisso via Wake-on-LAN
 network/wake_on_lan/spegni_pc.sh    # Spegne il PC principale via SSH
