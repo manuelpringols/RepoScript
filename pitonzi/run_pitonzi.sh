@@ -80,7 +80,7 @@ select_source() {
     local sources
     sources=$(grep -v '^#' "$sources_file" | grep -v '^$')
     local count
-    count=$(echo "$sources" | grep -c '.' 2>/dev/null || echo 0)
+    count=$(echo "$sources" | wc -l | tr -d ' ')
 
     local chosen
     if [[ "$count" -le 1 ]]; then
@@ -240,6 +240,7 @@ PYDEPS_EOF
 # e setta PYTHONPATH — più veloce e nessun problema ensurepip
 # ─────────────────────────────────────────────────────────────
 _PITONZI_DEPS_DIR=""
+trap 'rm -rf "${_PITONZI_DEPS_DIR:-}"' EXIT
 
 _get_deps_dir() {
   if [[ -n "$_PITONZI_DEPS_DIR" && -d "$_PITONZI_DEPS_DIR" ]]; then
@@ -285,7 +286,8 @@ _install_deps() {
   fi
 
   # Installa in dir RAM con --target
-  if python3 -m pip install $deps --target "$_PITONZI_DEPS_DIR" -q --no-warn-script-location 2>/dev/null; then
+  read -ra _deps_array <<< "$deps"
+  if python3 -m pip install "${_deps_array[@]}" --target "$_PITONZI_DEPS_DIR" -q --no-warn-script-location 2>/dev/null; then
     print_ok "Dipendenze installate in RAM: ${deps}"
   else
     print_warn "Installazione parziale — lo script potrebbe non funzionare correttamente."
@@ -540,7 +542,7 @@ do_last() {
   _install_deps "$tmp_script"
   python3 "$tmp_script"
   local exit_code=$?
-  rm -rf "$venv_path" "$tmp_script"
+  rm -f "$tmp_script"
   _post_run_pause "$exit_code"
 }
 
@@ -558,13 +560,15 @@ done
 # === ENTRY POINT ===
 # ─────────────────────────────────────────────────────────────
 case "${1:-}" in
-  -l|--last) select_source; load_descs; do_last; exit 0 ;;
-  --gen-desc) select_source; load_descs; print_ok "Cache descrizioni aggiornata."; exit 0 ;;
+  -l|--last)   select_source; load_descs; do_last; exit 0 ;;
+  --gen-desc)  select_source; load_descs; print_ok "Cache descrizioni aggiornata."; exit 0 ;;
+  --add-repo)  _ask_add_repo; select_source; load_descs; print_banner; echo ""; browse_and_run; exit 0 ;;
   -h|--help)
     echo -e "\n${BOLD}${CYAN}PITONZI${RESET} — Python Script Launcher\n"
-    echo -e "  ${CYAN}-l, --last${RESET}    Riesegue l'ultimo script"
-    echo -e "  ${YELLOW}--gen-desc${RESET}    Rigenera cache descrizioni"
-    echo -e "  ${RED}-h, --help${RESET}    Mostra questa guida\n"
+    echo -e "  ${CYAN}-l, --last${RESET}     Riesegue l'ultimo script"
+    echo -e "  ${YELLOW}--gen-desc${RESET}     Rigenera cache descrizioni"
+    echo -e "  ${MAGENTA}--add-repo${RESET}     Aggiunge un repo Python alle sources"
+    echo -e "  ${RED}-h, --help${RESET}     Mostra questa guida\n"
     exit 0 ;;
 esac
 
@@ -597,7 +601,6 @@ _ask_add_repo() {
   echo -e "${DARK_GRAY}──────────────────────────────────────────${RESET}"
 }
 
-_ask_add_repo
 select_source
 load_descs
 print_banner

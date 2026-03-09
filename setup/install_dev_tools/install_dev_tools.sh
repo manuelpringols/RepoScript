@@ -98,6 +98,29 @@ fi
 print_info "Distro rilevata: ${CYAN}${DISTRO}${RESET}"
 
 # ─────────────────────────────────────────────────────────────
+# === AGGIORNAMENTO INDICE (con cache marmitta) ===
+# ─────────────────────────────────────────────────────────────
+MARMITTA_CACHE_DIR="$HOME/.config/marmitta/cache"
+PKG_UPDATE_STAMP="${MARMITTA_CACHE_DIR}/pkg_update_last"
+
+_run_pkg_update() {
+  case "$DISTRO" in
+    arch)     sudo pacman -Syu --noconfirm ;;
+    debian)   sudo apt update ;;
+    fedora)   sudo dnf check-update || true ;;
+    rhel)     sudo yum update -y ;;
+    macos)    brew update ;;
+    opensuse) sudo zypper refresh ;;
+  esac
+}
+
+_should_update_pkg_index() {
+  [[ ! -f "$PKG_UPDATE_STAMP" ]] && return 0
+  # Salta se aggiornato nelle ultime 6 ore (360 min)
+  [[ -n "$(find "$PKG_UPDATE_STAMP" -mmin +360 2>/dev/null)" ]]
+}
+
+# ─────────────────────────────────────────────────────────────
 # === CATALOGO PACCHETTI ===
 # Formato: "label|check_cmd|arch_pkg|debian_pkg|fedora_pkg|macos_pkg|aur_pkg|post_install"
 # aur_pkg: usato solo su Arch se HAS_AUR=1 (ha precedenza su arch_pkg)
@@ -187,7 +210,8 @@ for label in "${sorted_labels[@]}"; do
   else
     status="${GREEN}[da installare]${RESET}"
   fi
-  fzf_list+="$(printf "%-30s  %-15s  %s" "$label" "[$group]" "$status")\n"
+  # Formato: label<TAB>display — field 1 è il label puro per l'estrazione
+  fzf_list+="${label}\t$(printf "%-30s  %-15s  %b" "$label" "[$group]" "$status")\n"
 done
 
 selected=$(printf "%b" "$fzf_list" | \
@@ -201,8 +225,10 @@ selected=$(printf "%b" "$fzf_list" | \
     --color=pointer:green,marker:yellow,header:italic \
     --bind="space:toggle" \
     --marker="✓" \
+    --delimiter=$'\t' \
+    --with-nth=2 \
     --ansi \
-  | sed 's/^[[:space:]]*//' | awk '{print $1, $2, $3, $4}' | sed 's/ *\[.*$//' | sed 's/[[:space:]]*$//')
+  | cut -f1)
 
 if [[ -z "$selected" ]]; then
   print_warn "Nessun pacchetto selezionato. Uscita."
@@ -212,11 +238,17 @@ fi
 # ─────────────────────────────────────────────────────────────
 # === AGGIORNAMENTO SISTEMA ===
 # ─────────────────────────────────────────────────────────────
-print_step "Aggiornamento indice pacchetti..."
-eval "$PKG_UPDATE" &
-spinner $! "Aggiornamento..."
-wait $!
-print_ok "Sistema aggiornato."
+if _should_update_pkg_index; then
+  print_step "Aggiornamento indice pacchetti..."
+  _run_pkg_update &>/dev/null &
+  spinner $! "Aggiornamento..."
+  wait $!
+  mkdir -p "$MARMITTA_CACHE_DIR"
+  touch "$PKG_UPDATE_STAMP"
+  print_ok "Sistema aggiornato."
+else
+  print_info "Indice pacchetti già aggiornato (< 6h) — skip."
+fi
 
 # ─────────────────────────────────────────────────────────────
 # === INSTALLAZIONE ===
@@ -245,29 +277,55 @@ while IFS= read -r label; do
     continue
   fi
 
-  # Scegli pkg corretto per distro
-  pkg=""
+  # Scegli pkg corretto per distro — array-based (no eval)
+  declare -a _base_cmd=() _pkg_args=()
   case "$DISTRO" in
     arch)
       if [[ "$HAS_AUR" -eq 1 && -n "${PKG_AUR[$matched]}" ]]; then
-        pkg="${PKG_AUR[$matched]}"
-        cmd="yay -S --noconfirm $pkg"
+        read -ra _pkg_args <<< "${PKG_AUR[$matched]}"
+        _base_cmd=(yay -S --noconfirm)
       elif [[ -n "${PKG_ARCH[$matched]}" ]]; then
-        pkg="${PKG_ARCH[$matched]}"
-        cmd="sudo pacman -S --noconfirm $pkg"
+        read -ra _pkg_args <<< "${PKG_ARCH[$matched]}"
+        _base_cmd=(sudo pacman -S --noconfirm)
       fi
       ;;
-    debian)   [[ -n "${PKG_DEB[$matched]}" ]]  && pkg="${PKG_DEB[$matched]}"  && cmd="$PKG_INSTALL $pkg" ;;
-    fedora)   [[ -n "${PKG_FED[$matched]}" ]]  && pkg="${PKG_FED[$matched]}"  && cmd="$PKG_INSTALL $pkg" ;;
-    rhel)     [[ -n "${PKG_FED[$matched]}" ]]  && pkg="${PKG_FED[$matched]}"  && cmd="$PKG_INSTALL $pkg" ;;
-    macos)    [[ -n "${PKG_MAC[$matched]}" ]]  && pkg="${PKG_MAC[$matched]}"  && cmd="$PKG_INSTALL $pkg" ;;
-    opensuse) [[ -n "${PKG_ARCH[$matched]}" ]] && pkg="${PKG_ARCH[$matched]}" && cmd="$PKG_INSTALL $pkg" ;;
+    debian)
+      if [[ -n "${PKG_DEB[$matched]}" ]]; then
+        read -ra _pkg_args <<< "${PKG_DEB[$matched]}"
+        read -ra _base_cmd <<< "$PKG_INSTALL"
+      fi
+      ;;
+    fedora|rhel)
+      if [[ -n "${PKG_FED[$matched]}" ]]; then
+        read -ra _pkg_args <<< "${PKG_FED[$matched]}"
+        read -ra _base_cmd <<< "$PKG_INSTALL"
+      fi
+      ;;
+    macos)
+      if [[ -n "${PKG_MAC[$matched]}" ]]; then
+        read -ra _pkg_args <<< "${PKG_MAC[$matched]}"
+        read -ra _base_cmd <<< "$PKG_INSTALL"
+      fi
+      ;;
+    opensuse)
+      # openSUSE: preferisce nomi Debian, poi Arch come fallback
+      if [[ -n "${PKG_DEB[$matched]}" ]]; then
+        read -ra _pkg_args <<< "${PKG_DEB[$matched]}"
+        read -ra _base_cmd <<< "$PKG_INSTALL"
+      elif [[ -n "${PKG_ARCH[$matched]}" ]]; then
+        read -ra _pkg_args <<< "${PKG_ARCH[$matched]}"
+        read -ra _base_cmd <<< "$PKG_INSTALL"
+      fi
+      ;;
   esac
 
+  _has_pkg=${#_pkg_args[@]}
+
   # Post-install only (es. Angular CLI via npm)
-  if [[ -z "$pkg" && -n "${PKG_POST[$matched]}" ]]; then
+  if [[ "$_has_pkg" -eq 0 && -n "${PKG_POST[$matched]}" ]]; then
     echo -ne "  ${CYAN}⠿${RESET}  ${DARK_GRAY}Installo ${matched}...${RESET}"
-    eval "${PKG_POST[$matched]}" &>/dev/null &
+    read -ra _post_cmd <<< "${PKG_POST[$matched]}"
+    "${_post_cmd[@]}" &>/dev/null &
     spinner $! "Installo $matched..."
     wait $!
     if _is_installed "${PKG_CHECK[$matched]}"; then
@@ -280,14 +338,14 @@ while IFS= read -r label; do
     continue
   fi
 
-  if [[ -z "$pkg" ]]; then
+  if [[ "$_has_pkg" -eq 0 ]]; then
     print_warn "$matched — non disponibile per ${DISTRO}."
     FAILED+=("$matched")
     continue
   fi
 
   # Installa
-  eval "$cmd" &>/dev/null &
+  "${_base_cmd[@]}" "${_pkg_args[@]}" &>/dev/null &
   spinner $! "Installo $matched..."
   wait $!
 
@@ -296,7 +354,8 @@ while IFS= read -r label; do
     INSTALLED+=("$matched")
     # Post-install (es. systemctl enable)
     if [[ -n "${PKG_POST[$matched]}" ]]; then
-      eval "${PKG_POST[$matched]}" &>/dev/null || true
+      read -ra _post_cmd <<< "${PKG_POST[$matched]}"
+      "${_post_cmd[@]}" &>/dev/null || true
     fi
   else
     print_warn "$matched — installazione fallita."

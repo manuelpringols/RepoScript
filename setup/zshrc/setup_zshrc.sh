@@ -61,13 +61,13 @@ detect_pkg_manager
 # Il template è embedded nello script — nessun download necessario
 # ─────────────────────────────────────────────────────────────
 print_step "Genero file spinal (.zshrc template)..."
-SCRIPTS_DIR="$HOME/.manuel_scripts"
+SCRIPTS_DIR="$HOME/.config/marmitta/templates"
 mkdir -p "$SCRIPTS_DIR"
 
 cat > "$SCRIPTS_DIR/spinal" << 'SPINAL_EOF'
 # ─────────────────────────────────────────────────────────────
 # spinal — .zshrc personalizzato
-# github.com/manuelpringols/RepoScript
+# generato da marmitta (RepoScript)
 # ─────────────────────────────────────────────────────────────
 
 # Path Oh My Zsh
@@ -149,7 +149,7 @@ alias gl='git log --oneline --graph --decorate'
 # === SYSTEM INFO ===
 # ─────────────────────────────────────────────────────────────
 echo "-------------------------------------------------------------------"
-neofetch
+command -v neofetch &>/dev/null && neofetch
 SPINAL_EOF
 
 print_ok "File spinal generato."
@@ -179,10 +179,11 @@ ZSH_PATH=$(which zsh)
 if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]]; then
   print_ok "zsh è già la shell default."
 else
-  chsh -s "$ZSH_PATH" &
-  spinner $! "chsh..."
-  wait $!
-  print_ok "Shell default impostata a zsh."
+  if chsh -s "$ZSH_PATH"; then
+    print_ok "Shell default impostata a zsh."
+  else
+    print_warn "chsh fallito — potrebbe richiedere password. Esegui manualmente: chsh -s ${ZSH_PATH}"
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -193,11 +194,19 @@ if [[ -d "$HOME/.oh-my-zsh" ]]; then
   print_ok "Oh My Zsh già installato."
 else
   print_info "Installo Oh My Zsh..."
+  omz_installer="/tmp/omz_install_$$.sh"
+  if ! curl -fsSL "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh" \
+       -o "$omz_installer" 2>/dev/null; then
+    rm -f "$omz_installer"
+    print_err "Download script Oh My Zsh fallito. Controlla la connessione."
+  fi
   export RUNZSH=no
   export KEEP_ZSHRC=yes
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &
-  spinner $! "Installazione Oh My Zsh..."
-  wait $!
+  sh "$omz_installer" &>/dev/null &
+  omz_pid=$!
+  spinner $omz_pid "Installazione Oh My Zsh..."
+  wait $omz_pid
+  rm -f "$omz_installer"
   [[ -d "$HOME/.oh-my-zsh" ]] || print_err "Installazione Oh My Zsh fallita."
   print_ok "Oh My Zsh installato."
 fi
@@ -212,10 +221,15 @@ if [[ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
   print_ok "zsh-syntax-highlighting già presente."
 else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
-    "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" &
-  spinner $! "Clone zsh-syntax-highlighting..."
-  wait $!
-  print_ok "zsh-syntax-highlighting installato."
+    "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" &>/dev/null &
+  clone_pid=$!
+  spinner $clone_pid "Clone zsh-syntax-highlighting..."
+  wait $clone_pid
+  if [[ $? -eq 0 ]]; then
+    print_ok "zsh-syntax-highlighting installato."
+  else
+    print_warn "Clone zsh-syntax-highlighting fallito — controlla la connessione."
+  fi
 fi
 
 print_step "Verifica plugin zsh-autosuggestions..."
@@ -223,10 +237,15 @@ if [[ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
   print_ok "zsh-autosuggestions già presente."
 else
   git clone https://github.com/zsh-users/zsh-autosuggestions \
-    "$ZSH_CUSTOM/plugins/zsh-autosuggestions" &
-  spinner $! "Clone zsh-autosuggestions..."
-  wait $!
-  print_ok "zsh-autosuggestions installato."
+    "$ZSH_CUSTOM/plugins/zsh-autosuggestions" &>/dev/null &
+  clone_pid=$!
+  spinner $clone_pid "Clone zsh-autosuggestions..."
+  wait $clone_pid
+  if [[ $? -eq 0 ]]; then
+    print_ok "zsh-autosuggestions installato."
+  else
+    print_warn "Clone zsh-autosuggestions fallito — controlla la connessione."
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────

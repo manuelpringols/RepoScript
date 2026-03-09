@@ -4,14 +4,14 @@
 # ─────────────────────────────────────────────────────────────
 # === COLORI ===
 # ─────────────────────────────────────────────────────────────
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-YELLOW="\033[1;33m"
-CYAN="\033[0;36m"
-MAGENTA="\033[1;35m"
+GREEN="\e[0;32m"
+RED="\e[0;31m"
+YELLOW="\e[1;33m"
+CYAN="\e[0;36m"
+MAGENTA="\e[1;35m"
 DARK_GRAY="\e[90m"
 BOLD="\e[1m"
-RESET="\033[0m"
+RESET="\e[0m"
 
 print_ok()   { echo -e "${GREEN}✅ $1${RESET}"; }
 print_warn() { echo -e "${YELLOW}⚠️  $1${RESET}"; }
@@ -43,6 +43,9 @@ if [[ -f "$MARMITTA_CONFIG" ]]; then
   DEFAULT_TOKEN="${GITHUB_TOKEN:-}"
 fi
 
+# URL del repo marmitta — sovrascrivibile via MARMITTA_CONFIG
+MARMITTA_REPO_URL="${MARMITTA_REPO_URL:-https://github.com/manuelpringols/marmitta}"
+
 # ─────────────────────────────────────────────────────────────
 # === SELEZIONE PROFILO GIT ===
 # ─────────────────────────────────────────────────────────────
@@ -61,13 +64,13 @@ save_profile() {
     echo "# Marmitta git profiles — label|github_user|github_token|ssh_key" \
     > "$MARMITTA_GIT_CONFIG"
 
-  # Evita duplicati sulla label
-  if grep -q "^${label}|" "$MARMITTA_GIT_CONFIG" 2>/dev/null; then
-    # Aggiorna la riga esistente
-    sed -i "s|^${label}|.*|${label}|${user}|${token}|${ssh_key}|" "$MARMITTA_GIT_CONFIG"
-  else
-    echo "${label}|${user}|${token}|${ssh_key}" >> "$MARMITTA_GIT_CONFIG"
-  fi
+  # Aggiorna il profilo esistente o aggiunge uno nuovo
+  local tmpfile
+  tmpfile=$(mktemp)
+  grep -v "^${label}|" "$MARMITTA_GIT_CONFIG" > "$tmpfile"
+  echo "${label}|${user}|${token}|${ssh_key}" >> "$tmpfile"
+  mv "$tmpfile" "$MARMITTA_GIT_CONFIG"
+  chmod 600 "$MARMITTA_GIT_CONFIG"
   print_ok "Profilo '${label}' salvato."
 }
 
@@ -97,6 +100,11 @@ select_or_create_profile() {
   echo ""
   read -rp "$(echo -e "${YELLOW}Scelta [1]: ${RESET}")" choice < /dev/tty
   choice="${choice:-1}"
+
+  if ! [[ "$choice" =~ ^[0-9]+$ ]]; then
+    print_warn "Scelta non valida, uso il primo profilo."
+    choice=1
+  fi
 
   if [[ "$choice" -eq "$i" ]]; then
     create_profile
@@ -135,7 +143,7 @@ create_profile() {
   # Verifica token e ricava user automaticamente
   print_info "Verifico il token..."
   GITHUB_USER=$(curl -s \
-    -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Authorization: Bearer $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github+json" \
     https://api.github.com/user | jq -r '.login // empty')
 
@@ -179,6 +187,12 @@ _pick_ssh_key() {
       echo -e "  ${CYAN}$((i+1))${RESET}) ${ssh_keys[$i]}"
     done
     read -rp "$(echo -e "${YELLOW}Scegli [1]: ${RESET}")" key_idx < /dev/tty
+    if ! [[ "${key_idx:-1}" =~ ^[0-9]+$ ]] || \
+       [[ "${key_idx:-1}" -lt 1 ]] || \
+       [[ "${key_idx:-1}" -gt "${#ssh_keys[@]}" ]]; then
+      print_warn "Scelta non valida, uso la prima chiave."
+      key_idx=1
+    fi
     key_idx=$(( ${key_idx:-1} - 1 ))
     SSH_KEY_PATH="${ssh_keys[$key_idx]:-${ssh_keys[0]}}"
     print_info "Chiave selezionata: ${SSH_KEY_PATH}"
@@ -195,7 +209,7 @@ select_or_create_profile
 # ─────────────────────────────────────────────────────────────
 print_step "Configurazione repository"
 
-read -rp "$(echo -e "${YELLOW}📦 Nome del repository: ${RESET}")" REPO_NAME
+read -rp "$(echo -e "${YELLOW}📦 Nome del repository: ${RESET}")" REPO_NAME < /dev/tty
 while [[ -z "$REPO_NAME" ]]; do
   print_warn "Il nome è obbligatorio."
   read -rp "$(echo -e "${YELLOW}📦 Nome del repository: ${RESET}")" REPO_NAME < /dev/tty
@@ -236,7 +250,7 @@ print_step "Creazione repository su GitHub"
 
 tmp_resp=$(mktemp)
 http_code=$(curl -s -w "%{http_code}" -o "$tmp_resp" \
-  -H "Authorization: token $GITHUB_TOKEN" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Accept: application/vnd.github+json" \
   -X POST https://api.github.com/user/repos \
   -d "{\"name\":\"${REPO_NAME}\",\"description\":\"${REPO_DESC}\",\"private\":${REPO_PRIVATE}}")
@@ -262,7 +276,7 @@ KEY_TITLE="marmitta — ${PROFILE_LABEL} — $(hostname) — $(date +'%Y-%m-%d')
 
 tmp_ssh=$(mktemp)
 http_code=$(curl -s -w "%{http_code}" -o "$tmp_ssh" \
-  -H "Authorization: token $GITHUB_TOKEN" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Accept: application/vnd.github+json" \
   -X POST https://api.github.com/user/keys \
   -d "{\"title\":\"${KEY_TITLE}\",\"key\":\"${KEY_CONTENT}\"}")
@@ -325,7 +339,7 @@ if [[ ! -f "README.md" ]]; then
 ${REPO_DESC}
 
 ---
-*Inizializzato con [marmitta](https://github.com/${GITHUB_USER}/marmitta)*
+*Inizializzato con [marmitta](${MARMITTA_REPO_URL})*
 EOF
   git add README.md
   git commit -q -m "init: primo commit — README generato da marmitta"

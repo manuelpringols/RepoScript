@@ -30,6 +30,7 @@ BRANCH=$(git branch --show-current 2>/dev/null)
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 REPO_NAME=$(basename "$REPO_ROOT")
+UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
 
 echo -e "\n${BOLD}${CYAN}🐍 SLITHER PUSH${RESET}"
 echo -e "${DARK_GRAY}  repo:   ${RESET}${REPO_NAME}"
@@ -83,10 +84,29 @@ echo -e "${YELLOW}💾 git commit${RESET}"
 git commit -m "$commit_msg" || print_err "Commit fallito."
 
 # ─────────────────────────────────────────────────────────────
+# === PREVIEW COMMITS DA PUSHARE ===
+# ─────────────────────────────────────────────────────────────
+if [[ -n "$UPSTREAM" ]]; then
+  AHEAD=$(git rev-list "${UPSTREAM}..HEAD" 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$AHEAD" -gt 0 ]]; then
+    echo -e "\n${DARK_GRAY}📤 Commits da pushare (${AHEAD}):${RESET}"
+    git log "${UPSTREAM}..HEAD" --oneline 2>/dev/null | while IFS= read -r cline; do
+      echo -e "  ${DARK_GRAY}· ${cline}${RESET}"
+    done
+    echo ""
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────
 # === PUSH ===
 # ─────────────────────────────────────────────────────────────
-echo -e "${CYAN}🌐 git push origin ${BRANCH}${RESET}"
-git push origin "$BRANCH"
+if [[ -z "$UPSTREAM" ]]; then
+  echo -e "${CYAN}🌐 git push --set-upstream origin ${BRANCH}${RESET}"
+  git push --set-upstream origin "$BRANCH"
+else
+  echo -e "${CYAN}🌐 git push origin ${BRANCH}${RESET}"
+  git push origin "$BRANCH"
+fi
 PUSH_EXIT=$?
 
 # ─────────────────────────────────────────────────────────────
@@ -102,5 +122,7 @@ if [[ $PUSH_EXIT -eq 0 ]]; then
   echo -e "${GREEN}]${RESET}\n"
   print_ok "Push completato! ${DARK_GRAY}→ origin/${BRANCH}${RESET}"
 else
-  print_err "Push fallito. Controlla connessione o permessi su origin/${BRANCH}."
+  echo -e "${RED}❌ Push fallito. Controlla connessione o permessi su origin/${BRANCH}.${RESET}"
+  echo -e "${YELLOW}⚠️  Il commit è salvato localmente — usa 'git push' per riprovare.${RESET}"
+  exit 1
 fi
