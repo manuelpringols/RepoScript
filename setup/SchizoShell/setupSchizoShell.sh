@@ -9,9 +9,9 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────
 # === PALETTE & HELPERS ===
 # ─────────────────────────────────────────────────────────────
-RED='\e[38;5;160m';   GREEN='\e[92m';     CYAN='\e[96m'
-YELLOW='\e[93m';      MAGENTA='\e[95m';   DARK_GRAY='\e[90m'
-BOLD='\e[1m';         DIM='\e[2m';        RESET='\e[0m'
+RED=$'\e[38;5;160m';   GREEN=$'\e[92m';     CYAN=$'\e[96m'
+YELLOW=$'\e[93m';     MAGENTA=$'\e[95m';  DARK_GRAY=$'\e[90m'
+BOLD=$'\e[1m';        DIM=$'\e[2m';       RESET=$'\e[0m'
 
 print_ok()   { echo -e "${GREEN}  ✅  $1${RESET}"; }
 print_err()  { echo -e "${RED}  ❌  $1${RESET}"; exit 1; }
@@ -121,7 +121,7 @@ MENU_LINES=$(( 3 + ${#MODULE_IDS[@]} * 2 + 2 ))
 # ── Funzione: disegna il menu in-place ─────────────────────────────────────
 draw_menu() {
   local cursor=$1
-  printf "\e[${MENU_LINES}A"   # risali
+  printf "\033[${MENU_LINES}A"   # risali (octal: sempre interpretato da printf)
 
   echo -e "${BOLD}${CYAN}  Seleziona i moduli da installare${RESET}"
   echo -e "${DARK_GRAY}  ↑↓ naviga   SPAZIO toggle   A tutto   N niente   INVIO conferma${RESET}"
@@ -170,20 +170,29 @@ done
 echo -e "${DARK_GRAY}  ──────────────────────────────────────────────────────────────────${RESET}"
 echo -e "  ${CYAN}Selezionati: ${BOLD}${#MODULE_IDS[@]}/${#MODULE_IDS[@]}${RESET}"
 
-# ── Loop di input ───────────────────────────────────────────────────────────
-cursor=0
-draw_menu $cursor
-
+# ── Leggi tasto da /dev/tty (funziona anche con pipe/marmitta) ─────────────
 _read_key() {
   local key seq1 seq2
-  IFS= read -rsn1 key
+  IFS= read -rsn1 key < /dev/tty
   if [[ "$key" == $'\x1b' ]]; then
-    IFS= read -rsn1 -t 0.1 seq1
-    IFS= read -rsn1 -t 0.1 seq2
+    IFS= read -rsn1 -t 0.1 seq1 < /dev/tty
+    IFS= read -rsn1 -t 0.1 seq2 < /dev/tty
     key="${key}${seq1}${seq2}"
   fi
   printf '%s' "$key"
 }
+
+# ── Detect: stdout è un terminale? ──────────────────────────────────────────
+# Se stdout non è un tty (es. pipe di marmitta) il TUI non può funzionare.
+# In quel caso mostriamo un menu numerico semplice su /dev/tty.
+if ! [ -t 1 ]; then
+  # Fallback: selettore numerico via /dev/tty
+  exec > /dev/tty
+fi
+
+# ── Loop di input ───────────────────────────────────────────────────────────
+cursor=0
+draw_menu $cursor
 
 while true; do
   key=$(_read_key)
@@ -235,7 +244,8 @@ if [[ $any_selected -eq 0 ]]; then
 fi
 
 echo ""
-read -rp "$(echo -e "  ${MAGENTA}Procedere? [Y/n]: ${RESET}")" confirm < /dev/tty
+printf "  ${MAGENTA}Procedere? [Y/n]: ${RESET}" > /dev/tty
+read -r confirm < /dev/tty
 [[ "$confirm" =~ ^[Nn]$ ]] && { echo -e "\n${YELLOW}  Annullato.${RESET}\n"; exit 0; }
 echo ""
 
