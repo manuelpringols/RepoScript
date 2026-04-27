@@ -1,5 +1,6 @@
 # RepoScript
 
+<<<<<<< HEAD
 Raccolta di script Bash per automatizzare operazioni comuni di sviluppo, setup del sistema e gestione Git.
 Progettato per integrarsi con **[Marmitta](https://github.com/manuelpringols/marmitta)**, che centralizza credenziali, profili Git e configurazioni condivise.
 
@@ -315,3 +316,8 @@ Non è obbligatorio — gli script funzionano in standalone con input interattiv
 ## Licenza
 
 Uso personale — nessuna licenza formale.
+=======
+script per marmitta
+
+---
+*Inizializzato con [marmitta](https://github.com/manuelpringols/marmitta)*
